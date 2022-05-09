@@ -1,29 +1,69 @@
-import Vue from 'vue'
-import VueRouter from 'vue-router'
-import Home from '../views/Home.vue'
+import Vue from 'vue';
+import VueRouter from 'vue-router';
+import Login from '@/components/auth/Login.vue';
+import store from '@/store/index';
 
-Vue.use(VueRouter)
+Vue.use(VueRouter);
+
+const requiresAuth = (to, _, next) => {
+  if (store.getters['auth/authentified']) {
+    next();
+  } else {
+    if (to.path !== '/login') {
+      store.commit({
+        type: 'auth/setNext',
+        next: to.path,
+      });
+      next({ path: '/login' });
+    } else {
+      next({ name: 'login' });
+    }
+  }
+};
+
+const requiresAnon = (_, from, next) => {
+  if (!store.getters['auth/authentified']) {
+    next();
+  } else {
+    if (from && from.path) next(false);
+    else next({ path: '/' });
+  }
+};
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: Home
+    component: () => import('@/views/PlateformLayout.vue'),
+    beforeEnter: requiresAuth,
+    children: [
+      {
+        path: 'home',
+        name: 'Home',
+        component: () => import('@/views/Home.vue'),
+      },
+      {
+        path: 'about',
+        name: 'About',
+        component: () => import('@/views/About.vue'),
+      },
+      {
+        path: "",
+        redirect: "home"
+      }
+    ],
   },
   {
-    path: '/about',
-    name: 'About',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/About.vue')
-  }
-]
+    path: '/login',
+    name: 'login',
+    component: Login,
+    beforeEnter: requiresAnon,
+  },
+];
 
 const router = new VueRouter({
   mode: 'history',
-  base: process.env.BASE_URL,
-  routes
-})
+  routes,
+});
 
-export default router
+export default router;
+
